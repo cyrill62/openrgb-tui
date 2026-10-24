@@ -33,13 +33,13 @@ jobs:
           key: ${{ matrix.targets }}
       - name: Build (Linux / macOS)
         if: runner.os != 'Windows' && !matrix.alpine
-        run: ./scripts/build.sh ${{ matrix.targets }}
+        run: bash scripts/build.sh ${{ matrix.targets }}
       # Docker run rather than a job container: JS actions don't run in Alpine on arm64 runners.
       - name: Build (musl)
         if: matrix.alpine
         run: >-
           docker run --rm -v "$PWD:/src" -w /src rust:alpine
-          sh -c 'apk add --no-cache bash build-base && ./scripts/build.sh ${{ matrix.targets }}'
+          sh -c 'apk add --no-cache bash build-base && bash scripts/build.sh ${{ matrix.targets }}'
       - name: Build (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
