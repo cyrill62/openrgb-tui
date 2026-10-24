@@ -1,131 +1,96 @@
-# openrgb-tui
+# OpenRGB TUI
 
-A terminal user interface for [OpenRGB](https://openrgb.org). It talks to a running
-OpenRGB SDK server over the network, so you can control your RGB lighting from any
-terminal, including over SSH.
+A fast terminal UI for [OpenRGB](https://openrgb.org), written in Rust with
+[ratatui](https://ratatui.rs).
+
+It doesn't replace OpenRGB. It's a client that connects to a running OpenRGB
+instance through its SDK server and controls the devices OpenRGB already
+detected. It works over SSH, too.
 
 ## Features
 
-- **Devices**: browse every controller the server reports, with a live LED strip preview.
-- **Lighting**: switch modes and tune speed, brightness, direction and mode colors.
-  Optionally save a mode to the device's onboard memory.
-- **LEDs**: select single LEDs or keys with the keyboard or mouse and paint them.
-  You can fill a whole zone or device, or pick a color from an existing LED.
-- **Zones**: fill a zone with one color, or resize zones that support it.
-- **Sync all devices**: apply one color to every device at once, or turn them all off.
-- **Profiles**: save, load and delete OpenRGB profiles.
-- **Color picker**: HSV sliders plus hex input, and copy to the clipboard through OSC 52.
-- **Mouse support**: click buttons, drag over LEDs and along sliders.
-- Settings persist between runs. Text uses your terminal's colors, so the app reads
-  well on light and dark themes.
+- **Overview**: every device at a glance with live LED strips, plus a
+  "sync all" color and an "all off" button.
+- **Lighting**: switch hardware modes and set speed, brightness, direction and
+  mode colors, with "save to device" for controllers that support it.
+- **LEDs**: a visual LED map (keyboards render as labelled keys) where you move
+  a cursor, select LEDs (or drag over them with the mouse) and paint them live.
+- **Zones**: fill zones and resize addressable ARGB headers.
+- **Profiles**: load, save and delete profiles stored by the OpenRGB server.
+- Reacts to device hot-plug notifications from the server, and remembers the
+  server address and paint color between runs.
 
-## Requirements
-
-- OpenRGB with its SDK server running. Start OpenRGB with `--server`, or enable the
-  server in OpenRGB's **SDK Server** tab. The default port is `6742`.
-- A terminal with true-color support gives the best results.
-
-The client negotiates SDK protocol versions up to v4 and also works with older servers.
-
-## Installation
-
-### Prebuilt binaries
-
-Download an archive for your platform from the
-[Releases](../../releases) page. Builds are available for:
-
-| OS      | Architectures                     |
-| ------- | --------------------------------- |
-| Linux   | x86_64, arm64 (glibc and musl)    |
-| macOS   | x86_64, arm64                     |
-| Windows | x64, ARM64                        |
-
-Extract the archive and put `openrgb-tui` (or `openrgb-tui.exe`) on your `PATH`.
-
-### From source
-
-You need a recent stable [Rust](https://rustup.rs) toolchain.
-
-```sh
-cargo install --path .
-# or
-cargo build --release   # binary in target/release/openrgb-tui
-```
+Needs a terminal with 24-bit color (most modern terminals).
 
 ## Usage
 
-```sh
-openrgb-tui                  # connect to the saved address (default 127.0.0.1:6742)
-openrgb-tui 192.168.1.20     # connect to another host on the default port
-openrgb-tui myhost:6743      # host and port
-openrgb-tui --help
-```
+1. Start OpenRGB's SDK server: run `openrgb --server`, or click
+   *Start Server* in OpenRGB's **SDK Server** tab.
+2. Run this app:
 
-Press `?` inside the app for the full list of keys.
+   ```sh
+   cargo run --release                       # connects to 127.0.0.1:6742
+   cargo run --release -- 192.168.1.20:6742  # or another host[:port]
+   ```
+
+Supports SDK protocol versions 0–4. Newer servers negotiate down to v4.
 
 ### Keys
 
-| Key                      | Action                                           |
-| ------------------------ | ------------------------------------------------ |
-| `Tab`                    | Switch between the sidebar and the page          |
-| `↑` `↓` / `j` `k`        | Move                                             |
-| `Enter` / `Space`        | Open, select or press                            |
-| `←` `→` / `h` `l`        | Adjust a slider or choice (`Shift`: faster)      |
-| `Esc`                    | Back to the sidebar                              |
-| `r`                      | Rescan devices                                   |
-| `q` / `Ctrl-C`           | Quit                                             |
+| Key                     | Action                                          |
+|-------------------------|-------------------------------------------------|
+| `Tab`                   | switch between the sidebar and the page         |
+| `↑` `↓` / `j` `k`       | move                                            |
+| `←` `→` / `h` `l`       | adjust a slider, color or choice (`Shift`: faster) |
+| `Enter` / `Space`       | open, select or press                           |
+| `[` `]` or `1`–`4`      | device tabs: Lighting, LEDs, Zones, Info        |
+| `Esc`                   | back to the sidebar                             |
+| `r`                     | rescan devices                                  |
+| `?`                     | all keys                                        |
+| `q` / `Ctrl-C`          | quit                                            |
 
-**Device pages**
+On the LEDs tab: arrows move the cursor (`Shift` extends the selection),
+`Space` toggles an LED, `Enter` paints the selection, `c` changes the paint
+color, `p` picks it from the cursor LED, `a` / `n` / `z` select all / none /
+the current zone, `f` fills the device and `o` turns the selection off.
 
-| Key              | Action                                       |
-| ---------------- | -------------------------------------------- |
-| `[` `]` or `1`–`4` | Switch tab: Lighting, LEDs, Zones, Info    |
-| `+` / `-`        | Add or remove a mode color                   |
+Mouse clicks work everywhere: click and drag along sliders and color rails, or
+over LEDs to select them (`Ctrl`/`Shift`-click toggles).
 
-**LEDs tab**
+Settings are stored in `$XDG_CONFIG_HOME/openrgb-tui/settings.conf`
+(`~/.config` on Linux, `~/Library/Application Support` on macOS, `%APPDATA%` on
+Windows).
 
-| Key           | Action                                          |
-| ------------- | ----------------------------------------------- |
-| arrows        | Move the cursor (`Shift`: extend the selection) |
-| `Space`       | Select or unselect the LED under the cursor     |
-| `Enter`       | Paint the selection (or the cursor LED)         |
-| `c`           | Change the paint color                          |
-| `p`           | Pick the paint color from the cursor LED        |
-| `a` / `n` / `z` | Select all, none, or the cursor's zone        |
-| `f` / `o`     | Fill the device / turn the selection off        |
-
-**Profiles**: `Enter` loads a profile, `d` or `Del` deletes it.
-
-### Settings file
-
-The host, port, "connect on startup" option and paint color are saved on exit to:
-
-| OS      | Path                                                         |
-| ------- | ------------------------------------------------------------ |
-| Linux   | `$XDG_CONFIG_HOME/openrgb-tui/settings.conf` or `~/.config/openrgb-tui/settings.conf` |
-| macOS   | `~/Library/Application Support/openrgb-tui/settings.conf`    |
-| Windows | `%APPDATA%\openrgb-tui\settings.conf`                        |
-
-`XDG_CONFIG_HOME` takes precedence on every platform when it is set.
-
-## Development without hardware
-
-The repository includes a mock SDK server with a few virtual devices:
+## Building releases
 
 ```sh
-cargo run --example mock_server            # listens on 127.0.0.1:6742
-cargo run --example mock_server -- 6743    # custom port
-cargo run                                  # in another terminal
+scripts/build.sh                # Linux/macOS: both architectures of the host OS
+scripts/build.sh linux-x64      # or pick targets: linux-arm64, macos, windows-x64, all, …
 ```
 
-To list what a real server reports, without changing anything:
+```powershell
+.\scripts\build.ps1              # Windows: x64 + ARM64
+```
+
+Archives are written to `dist/`. Run `scripts/build.sh --help` to see the
+cross-compilation options. Pushing a `v*` tag runs
+`.github/workflows/release.yml`, which builds Linux (glibc and musl), macOS and
+Windows for x64 and ARM64, then attaches the archives to a draft GitHub release.
+
+## Development
 
 ```sh
-cargo run --example probe -- 127.0.0.1 6742
+cargo test
+cargo run --example mock_server -- 26742        # fake server with virtual devices
+cargo run -- 127.0.0.1:26742
+cargo run --example probe -- 127.0.0.1 6742     # read-only: list a server's devices
 ```
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for how to build releases and contribute.
+Layout:
 
-## License
-
-[MIT](LICENSE). OpenRGB is a separate project. openrgb-tui is not affiliated with it.
+| Path              | Purpose                                                  |
+|-------------------|----------------------------------------------------------|
+| `src/protocol.rs` | SDK packet framing and controller (de)serialization      |
+| `src/client.rs`   | Blocking TCP client                                      |
+| `src/worker.rs`   | Background thread that owns the connection, so the UI never blocks |
+| `src/ui/`         | ratatui app: event loop, pages, LED map, color picker    |

@@ -1,0 +1,13 @@
+[package]
+name = "openrgb-tui"
+version = "0.1.0"
+edition = "2024"
+description = "A terminal UI for OpenRGB, built with ratatui"
+license = "GPL-2.0-or-later"
+
+[dependencies]
+ratatui = "0.30"
+
+[profile.release]
+lto = "thin"
+strip = true
