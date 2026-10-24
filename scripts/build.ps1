@@ -31,7 +31,12 @@ $ErrorActionPreference = 'Stop'
 Set-Location (Join-Path $PSScriptRoot '..')
 
 $App = 'openrgb-tui'
-$Version = (Select-String -Path Cargo.toml -Pattern '^version\s*=\s*"(.+)"' | Select-Object -First 1).Matches.Groups[1].Value
+# VERSION is the source of truth; scripts/bump-version.sh copies it into Cargo.toml.
+$Version = (Get-Content VERSION -Raw).Trim()
+$CargoVersion = (Select-String -Path Cargo.toml -Pattern '^version\s*=\s*"(.+)"' | Select-Object -First 1).Matches.Groups[1].Value
+if ($Version -ne $CargoVersion) {
+    throw "VERSION ($Version) and Cargo.toml ($CargoVersion) differ; run scripts/bump-version.sh $Version"
+}
 $Dist = 'dist'
 
 function Have([string] $cmd) { [bool](Get-Command $cmd -ErrorAction SilentlyContinue) }

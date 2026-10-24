@@ -1,6 +1,6 @@
 [package]
 name = "openrgb-tui"
-version = "0.1.0"
+version = "0.1.3"
 edition = "2024"
 description = "A terminal UI for OpenRGB, built with ratatui"
 license = "GPL-2.0-or-later"

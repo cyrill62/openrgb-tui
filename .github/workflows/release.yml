@@ -44,9 +44,12 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: ./scripts/build.ps1 ${{ matrix.targets }}
-      - uses: softprops/action-gh-release@v2
-        with:
-          files: |
-            dist/*.tar.gz
-            dist/*.zip
-          draft: true
+      # The release itself is created by scripts/release.sh; this only attaches the archives.
+      - name: Upload to release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          shopt -s nullglob
+          gh release upload "${{ github.ref_name }}" dist/*.tar.gz dist/*.zip \
+            --clobber --repo "${{ github.repository }}"

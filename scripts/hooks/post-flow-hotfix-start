@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# git-flow-avh hook: bumps the version right after "git flow hotfix start <version>".
+# Enable with: git config gitflow.path.hooks scripts/hooks
+# Arguments: $1 version, $2 origin, $3 branch.
+exec "$(dirname "$0")/../bump-version.sh" "$1"

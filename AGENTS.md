@@ -61,7 +61,14 @@ background and use the `probe` example, or write unit tests.
 
 ## Releases
 
-Pushing a `v*` tag triggers `.github/workflows/release.yml`. It builds every target
-with `scripts/build.sh` / `scripts/build.ps1` and creates a draft GitHub release. The
-scripts read the version from `Cargo.toml` and build with `--locked`, so keep
-`Cargo.lock` committed and up to date. `target/` and `dist/` are git-ignored.
+Versioning follows git-flow (AVH) with `v`-prefixed tags. `VERSION` is the source of
+truth. Never edit the version in `Cargo.toml` by hand. Use `scripts/bump-version.sh`,
+which updates `VERSION`, `Cargo.toml`, `Cargo.lock` and `CHANGELOG.md` together; the
+build scripts fail if `VERSION` and `Cargo.toml` disagree. `scripts/hooks/` holds
+git-flow hooks that run the bump on `git flow release|hotfix start`.
+
+After `git flow release finish`, `scripts/release.sh` pushes `main`, `develop` and the
+tags, then creates the GitHub release with `gh`. The tag push triggers
+`.github/workflows/release.yml`. It builds every target with `scripts/build.sh` /
+`scripts/build.ps1` and uploads the archives to that release. Builds use `--locked`, so
+keep `Cargo.lock` committed and up to date. `target/` and `dist/` are git-ignored.

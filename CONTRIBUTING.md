@@ -97,11 +97,38 @@ target they cannot build and tell you what is missing.
 
 ## Releasing (maintainers)
 
-1. Bump `version` in `Cargo.toml` and move the **Unreleased** entries in `CHANGELOG.md`
-   under the new version.
-2. Commit, then tag and push: `git tag v0.2.0 && git push --tags`.
-3. The **Release** workflow builds every target and creates a draft GitHub release
-   with the archives. Review it and publish.
+Versioning uses [git-flow (AVH edition)](https://github.com/petervanderdoes/gitflow-avh)
+with the `v` version tag prefix. The `VERSION` file is the source of truth for the
+version. `scripts/bump-version.sh` copies it into `Cargo.toml` and `Cargo.lock`, and the
+build scripts refuse to run when the two differ.
+
+One-time setup, so that starting a release or hotfix bumps the version automatically:
+
+```sh
+git flow init -d                             # once per clone; set the version tag prefix to "v"
+git config gitflow.prefix.versiontag v
+git config gitflow.path.hooks scripts/hooks
+```
+
+1. Start the release (or `git flow hotfix start 0.1.3`):
+
+   ```sh
+   git flow release start 0.2.0
+   ```
+
+   The hook runs `scripts/bump-version.sh`. It writes `VERSION`, syncs `Cargo.toml` and
+   `Cargo.lock`, moves the **Unreleased** changelog entries under `0.2.0`, and commits.
+   Without the hook, run `scripts/bump-version.sh` yourself on the release branch.
+   It also takes `major`, `minor`, `patch` or an explicit `X.Y.Z`. Pass `--no-commit`
+   to skip the commit.
+2. Review `CHANGELOG.md`, then finish: `git flow release finish 0.2.0`. This merges into
+   `main` and `develop` and creates the `v0.2.0` tag.
+3. Run `scripts/release.sh` (needs the [GitHub CLI](https://cli.github.com)). It pushes
+   `main`, `develop` and the tags, then creates the GitHub release with the changelog
+   section as notes. Extra arguments go to `gh release create`, e.g.
+   `scripts/release.sh --draft`.
+4. The **Release** workflow, triggered by the tag, builds every target and attaches the
+   archives to the release.
 
 ## License
 

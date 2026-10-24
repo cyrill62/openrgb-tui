@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.3] - 2026-10-24
+
+Fix release workflow
+
 ## [0.1.0] - 2026-10-24
 
 First release.
@@ -32,5 +36,6 @@ First release.
 - Release build scripts for Linux (glibc and musl), macOS and Windows (x86_64 and
   arm64), and a GitHub Actions release workflow.
 
-[Unreleased]: ../../compare/v0.1.0...HEAD
-[0.1.0]: ../../releases/tag/v0.1.0
+[Unreleased]: https://github.com/cyrill62/openrgb-tui/compare/v0.1.3...HEAD
+[0.1.3]: https://github.com/cyrill62/openrgb-tui/compare/v0.1.0...v0.1.3
+[0.1.0]: https://github.com/cyrill62/openrgb-tui/releases/tag/v0.1.0

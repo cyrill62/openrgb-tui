@@ -23,7 +23,6 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 APP=openrgb-tui
-VERSION=$(sed -n 's/^version *= *"\(.*\)"/\1/p' Cargo.toml | head -n1)
 DIST=dist
 PACKAGE=1
 
@@ -82,6 +81,12 @@ if [ ${#TARGETS[@]} -eq 0 ]; then
 fi
 
 have cargo || die "cargo not found — install Rust from https://rustup.rs"
+
+# VERSION is the source of truth; scripts/bump-version.sh copies it into Cargo.toml.
+VERSION=$(tr -d '[:space:]' < VERSION)
+CARGO_VERSION=$(sed -n 's/^version *= *"\(.*\)"/\1/p' Cargo.toml | head -n1)
+[ "$VERSION" = "$CARGO_VERSION" ] ||
+  die "VERSION ($VERSION) and Cargo.toml ($CARGO_VERSION) differ; run scripts/bump-version.sh $VERSION"
 
 # Picks the cargo subcommand able to build $1 on this host, or explains what is missing.
 builder_for() {
