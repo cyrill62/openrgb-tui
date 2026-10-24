@@ -116,8 +116,11 @@ git config gitflow.path.hooks scripts/hooks
    git flow release start 0.2.0
    ```
 
-   The hook runs `scripts/bump-version.sh`. It writes `VERSION`, syncs `Cargo.toml` and
-   `Cargo.lock`, moves the **Unreleased** changelog entries under `0.2.0`, and commits.
+   The hook runs `scripts/bump-version.sh`. It asks for a description of the version,
+   writes `VERSION`, and syncs `Cargo.toml` and `Cargo.lock`. Then it adds a `0.2.0`
+   section to the changelog with the description followed by the **Unreleased** entries.
+   Last, it commits as `[Release] v0.2.0` (or `[Hotfix] …`), with the description as the
+   commit body. `-m "text"` gives the description without the prompt.
    Without the hook, run `scripts/bump-version.sh` yourself on the release branch.
    It also takes `major`, `minor`, `patch` or an explicit `X.Y.Z`. Pass `--no-commit`
    to skip the commit.

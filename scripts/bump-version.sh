@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Sets the project version: writes VERSION, syncs Cargo.toml and Cargo.lock, turns the
-# CHANGELOG.md "Unreleased" section into the new version, and commits the result.
+# Sets the project version: asks for a description of the version, writes VERSION, syncs
+# Cargo.toml and Cargo.lock, turns the CHANGELOG.md "Unreleased" section into the new
+# version headed by that description, and commits with it as the message body.
 #
 # Usage: scripts/bump-version.sh [options] [major | minor | patch | X.Y.Z]
 #
@@ -13,8 +14,10 @@
 #   major / minor / patch bump the version currently in VERSION.
 #
 #   Options:
-#     --no-commit   only edit the files
-#     -h, --help    show this help
+#     -m, --message TEXT  the version description, instead of asking for it
+#                         (without a terminal, it is read from stdin)
+#     --no-commit         only edit the files
+#     -h, --help          show this help
 #
 # Run automatically on "git flow release/hotfix start" with:
 #   git config gitflow.path.hooks scripts/hooks
@@ -24,14 +27,16 @@ cd "$(dirname "$0")/.."
 
 die() { echo "error: $*" >&2; exit 1; }
 info() { echo "==> $*"; }
-usage() { sed -n '2,21p' "$0" | sed 's/^# \{0,1\}//'; exit 0; }
+usage() { sed -n '2,25p' "$0" | sed 's/^# \{0,1\}//'; exit 0; }
 # Replaces $1 with stdin in place, keeping its permissions.
 rewrite() { local tmp; tmp=$(mktemp); cat > "$tmp"; cat "$tmp" > "$1"; rm -f "$tmp"; }
 
 COMMIT=1
 ARG=""
+DESC=""
 while [ $# -gt 0 ]; do
   case "$1" in
+    -m | --message) [ $# -ge 2 ] || die "$1 needs a value"; DESC=$2; shift ;;
     --no-commit) COMMIT=0 ;;
     -h | --help) usage ;;
     -*) die "unknown option '$1' (see --help)" ;;
@@ -44,10 +49,16 @@ SEMVER='^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$'
 CURRENT=$(tr -d '[:space:]' < VERSION 2>/dev/null || true)
 [ -n "$CURRENT" ] || CURRENT=$(sed -n 's/^version *= *"\(.*\)"/\1/p' Cargo.toml | head -n1)
 
+branch=$(git rev-parse --abbrev-ref HEAD)
+release_prefix=$(git config gitflow.prefix.release || echo release/)
+hotfix_prefix=$(git config gitflow.prefix.hotfix || echo hotfix/)
+# Commit subject label, as in "[Hotfix] v0.1.2".
+case "$branch" in
+  "$hotfix_prefix"*) KIND=Hotfix ;;
+  *) KIND=Release ;;
+esac
+
 if [ -z "$ARG" ]; then
-  branch=$(git rev-parse --abbrev-ref HEAD)
-  release_prefix=$(git config gitflow.prefix.release || echo release/)
-  hotfix_prefix=$(git config gitflow.prefix.hotfix || echo hotfix/)
   case "$branch" in
     "$release_prefix"* | "$hotfix_prefix"*) ARG=${branch#"$release_prefix"}; ARG=${ARG#"$hotfix_prefix"} ;;
     *) die "not on a git-flow release/hotfix branch; give a version (see --help)" ;;
@@ -72,6 +83,21 @@ esac
 TAG_PREFIX=$(git config gitflow.prefix.versiontag || echo v)
 info "bumping $CURRENT -> $NEW"
 
+if [ -z "$DESC" ]; then
+  if [ -t 0 ]; then
+    echo "Describe $TAG_PREFIX$NEW (Markdown, e.g. '- Fix zone resize'). Finish with an empty line:" >&2
+    while IFS= read -r -p "> " line && [ -n "$line" ]; do
+      DESC+="$line"$'\n'
+    done
+  else
+    DESC=$(cat)
+  fi
+fi
+# Trim leading and trailing blank lines.
+DESC=$(printf '%s\n' "$DESC" | sed -e '/./,$!d' | sed -e :a -e '/^\n*$/{$d;N;ba' -e '}')
+[ -n "$DESC" ] || die "a version description is required"
+export DESC
+
 echo "$NEW" > VERSION
 
 # Only the [package] version, not dependency versions.
@@ -90,13 +116,14 @@ if [ -f Cargo.lock ]; then
   ' Cargo.lock | rewrite Cargo.lock
 fi
 
-# "## [Unreleased]" keeps its place; its entries move under the new version heading,
-# and the compare links at the bottom follow.
+# "## [Unreleased]" keeps its place; the new version heading and the description go
+# below it, followed by the entries that were unreleased, and the compare links at the
+# bottom follow. The description comes through ENVIRON since awk -v mangles backslashes.
 if grep -qF "## [$NEW]" CHANGELOG.md; then
   info "CHANGELOG.md already has a $NEW section, left unchanged"
 elif grep -q '^## \[Unreleased\]' CHANGELOG.md; then
   awk -v v="$NEW" -v d="$(date +%Y-%m-%d)" -v p="$TAG_PREFIX" '
-    /^## \[Unreleased\]/ { print; print ""; print "## [" v "] - " d; next }
+    /^## \[Unreleased\]/ { print; print ""; print "## [" v "] - " d; print ""; print ENVIRON["DESC"]; next }
     /^\[Unreleased\]: / {
       base = $2; sub(/compare\/.*/, "", base)
       prev = $2; sub(/.*compare\//, "", prev); sub(/\.\.\.HEAD$/, "", prev)
@@ -113,8 +140,8 @@ fi
 if [ $COMMIT -eq 1 ]; then
   git add VERSION Cargo.toml CHANGELOG.md
   [ -f Cargo.lock ] && git add Cargo.lock
-  git commit -m "Bump version to $NEW"
-  info "committed; review CHANGELOG.md, then finish the release/hotfix with git flow"
+  git commit -m "[$KIND] $TAG_PREFIX$NEW" -m "$DESC"
+  info "committed; finish the release/hotfix with git flow"
 else
   info "files updated (not committed)"
 fi
